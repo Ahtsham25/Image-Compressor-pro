@@ -51,14 +51,14 @@ jobs:
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'android' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: |
-          gradle :app:bundleRelease -x test -x lintVitalAnalyzeRelease -x lint
+          gradle :app:bundleRelease
 
       - name: Build Installable Universal APK (.APK for Mobile Device)
         env:
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'android' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: |
-          gradle :app:assembleRelease -x test -x lintVitalAnalyzeRelease -x lint
+          gradle :app:assembleRelease
 
       - name: Upload Play Store AAB Bundle Artifact
         uses: actions/upload-artifact@v4
