@@ -1,0 +1,6 @@
+{
+  "name": "Image Compressor",
+  "description": "High-performance Image Compressor with Standard, High, and Low compression modes, real-time size reduction stats, and ad placement options.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
