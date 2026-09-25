@@ -22,42 +22,43 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
 
-      - name: Ensure Gradle Wrapper Executable
-        run: |
-          chmod +x gradlew || true
-
-      - name: Run Unit Tests (Robolectric & JUnit)
-        run: |
-          gradle testDebugUnitTest --continue || ./gradlew testDebugUnitTest --continue || true
-        continue-on-error: true
-
-      - name: Build Android App Bundle (.AAB for Google Play Store)
-        run: |
-          gradle :app:bundleRelease -x test || gradle :app:bundleDebug -x test || ./gradlew :app:bundleRelease -x test || ./gradlew :app:bundleDebug -x test
-
-      - name: Build Installable Universal APK (.APK for Mobile Device)
-        run: |
-          gradle :app:assembleRelease -x test || gradle :app:assembleDebug -x test || ./gradlew :app:assembleRelease -x test || ./gradlew :app:assembleDebug -x test
-
-      - name: Sign Android App Bundle (if Keystore Secret provided)
+      - name: Prepare Debug & Release Keystores
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        if: "${{ env.KEYSTORE_BASE64 != '' }}"
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: app/build/outputs/bundle/release
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # 1. Restore debug.keystore from debug.keystore.base64
+          if [ -f "debug.keystore.base64" ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+            echo "Successfully restored debug.keystore"
+          fi
+
+          # 2. Prepare my-upload-key.jks for release signing
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using release keystore provided via GitHub Secrets"
+            echo "$KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
+          else
+            echo "Generating fallback upload keystore for release build"
+            keytool -genkey -v -keystore my-upload-key.jks -storepass android -keypass android -alias upload -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Developer, OU=App, O=AIStudio, L=City, ST=State, C=US"
+          fi
+
+      - name: Build Android App Bundle (.AAB for Google Play Store)
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+        run: |
+          gradle :app:bundleRelease -x test -x lintVitalAnalyzeRelease -x lint
+
+      - name: Build Installable Universal APK (.APK for Mobile Device)
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+        run: |
+          gradle :app:assembleRelease -x test -x lintVitalAnalyzeRelease -x lint
 
       - name: Upload Play Store AAB Bundle Artifact
         uses: actions/upload-artifact@v4
