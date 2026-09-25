@@ -25,27 +25,24 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
+          gradle-version: '9.3.1'
 
-      - name: Generate Gradle Wrapper (if not present)
+      - name: Ensure Gradle Wrapper Executable
         run: |
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper --gradle-version 8.11.1
-          fi
           chmod +x gradlew || true
 
-      - name: Run Unit Tests (Optional Verification)
+      - name: Run Unit Tests (Robolectric & JUnit)
         run: |
-          ./gradlew testDebugUnitTest --continue || true
+          gradle testDebugUnitTest --continue || ./gradlew testDebugUnitTest --continue || true
         continue-on-error: true
 
       - name: Build Android App Bundle (.AAB for Google Play Store)
         run: |
-          ./gradlew :app:bundleRelease -x test || ./gradlew :app:bundleDebug -x test
+          gradle :app:bundleRelease -x test || gradle :app:bundleDebug -x test || ./gradlew :app:bundleRelease -x test || ./gradlew :app:bundleDebug -x test
 
       - name: Build Installable Universal APK (.APK for Mobile Device)
         run: |
-          ./gradlew :app:assembleRelease -x test || ./gradlew :app:assembleDebug -x test
+          gradle :app:assembleRelease -x test || gradle :app:assembleDebug -x test || ./gradlew :app:assembleRelease -x test || ./gradlew :app:assembleDebug -x test
 
       - name: Sign Android App Bundle (if Keystore Secret provided)
         env:
