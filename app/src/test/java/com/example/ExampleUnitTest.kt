@@ -1,5 +1,6 @@
 package com.example
 
+import android.net.Uri
 import com.example.model.CompressionFormat
 import com.example.model.CompressionPreset
 import com.example.model.CompressionResult
@@ -14,7 +15,7 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [34])
 class ExampleUnitTest {
     @Test
     fun testFormatBytes() {
@@ -26,7 +27,8 @@ class ExampleUnitTest {
 
     @Test
     fun testCompressionPresets() {
-        assertEquals(3, CompressionPreset.values().count { it != CompressionPreset.CUSTOM })
+        val nonCustom = CompressionPreset.values().filter { it != CompressionPreset.CUSTOM }
+        assertEquals(3, nonCustom.size)
         assertTrue(CompressionPreset.LOW.defaultQuality > CompressionPreset.STANDARD.defaultQuality)
         assertTrue(CompressionPreset.STANDARD.defaultQuality > CompressionPreset.HIGH.defaultQuality)
     }
@@ -34,7 +36,7 @@ class ExampleUnitTest {
     @Test
     fun testSavingsCalculation() {
         val details = ImageDetails(
-            uri = android.net.Uri.parse("content://media/external/images/media/1"),
+            uri = Uri.parse("content://media/external/images/media/1"),
             fileName = "sample.jpg",
             sizeBytes = 1000000L,
             width = 4000,

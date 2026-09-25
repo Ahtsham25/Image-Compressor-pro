@@ -20,11 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Security
@@ -173,7 +173,7 @@ fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF25D366))
                     ) {
-                        Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("WhatsApp", fontSize = 12.sp)
                     }
@@ -340,7 +340,7 @@ fun ContactInfoDialog(onDismiss: () -> Unit) {
                                 .background(Color(0xFF25D366), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Chat, contentDescription = null, tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color.White)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -362,7 +362,7 @@ fun ContactInfoDialog(onDismiss: () -> Unit) {
                                 fontSize = 11.sp
                             )
                         }
-                        Icon(Icons.Default.OpenInNew, contentDescription = null, tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
                     }
                 }
 
