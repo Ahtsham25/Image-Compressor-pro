@@ -59,4 +59,24 @@ class ExampleUnitTest {
         assertEquals(800000L, result.savingsBytes)
         assertEquals(80, result.savingsPercentage)
     }
+
+    @Test
+    fun testAdConfigHasNoTestIdsByDefault() {
+        val config = com.example.model.AdConfig()
+        assertTrue(config.bannerAdId.isEmpty())
+        assertTrue(config.interstitialAdId.isEmpty())
+        assertTrue(config.rewardedAdId.isEmpty())
+        assertTrue(config.appId.isEmpty())
+    }
+
+    @Test
+    fun testSaveToGalleryCreatesValidFile() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val tempFile = File.createTempFile("test_compressed", ".jpg", context.cacheDir)
+        tempFile.writeBytes(byteArrayOf(1, 2, 3, 4, 5))
+
+        val savedUri = FileUtils.saveToGallery(context, tempFile, "JPEG")
+        org.junit.Assert.assertNotNull(savedUri)
+        tempFile.delete()
+    }
 }

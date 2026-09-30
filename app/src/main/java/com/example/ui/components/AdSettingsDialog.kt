@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,13 +56,14 @@ fun AdSettingsDialog(
     language: AppLanguage,
     onSave: (AdConfig) -> Unit,
     onTestInterstitial: () -> Unit,
+    onTestRewarded: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var bannerId by remember { mutableStateOf(adConfig.bannerAdId) }
     var interstitialId by remember { mutableStateOf(adConfig.interstitialAdId) }
+    var rewardedId by remember { mutableStateOf(adConfig.rewardedAdId) }
     var appId by remember { mutableStateOf(adConfig.appId) }
     var adsEnabled by remember { mutableStateOf(adConfig.adsEnabled) }
-    var testMode by remember { mutableStateOf(adConfig.testMode) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -100,14 +102,14 @@ fun AdSettingsDialog(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = if (language == AppLanguage.URDU) "ایڈز سیٹنگز اور IDs" else "AdMob Configuration",
+                                text = if (language == AppLanguage.URDU) "گوگل ایڈز سیٹنگز" else "AdMob Configuration",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                             )
                             Text(
-                                text = if (language == AppLanguage.URDU) "گوگل ایڈ موب اشتہارات" else "Google AdMob IDs",
+                                text = if (language == AppLanguage.URDU) "آپ کی گوگل ایڈ آئی ڈیز" else "Your Google AdMob IDs",
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF94A3B8))
                             )
                         }
@@ -118,7 +120,35 @@ fun AdSettingsDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // User Google ID active note
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF06B6D4).copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = Color(0xFF06B6D4),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (language == AppLanguage.URDU)
+                            "ٹیسٹ ایڈ ختم کر دیا گیا ہے۔ آپ کی درج کردہ گوگل آئی ڈیز براہ راست استعمال ہوں گی۔"
+                        else
+                            "Test Ads permanently removed. Your custom Google Ad IDs are used directly.",
+                        color = Color(0xFFE2E8F0),
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Toggle Enable Ads
                 Row(
@@ -137,7 +167,7 @@ fun AdSettingsDialog(
                             fontSize = 14.sp
                         )
                         Text(
-                            text = if (language == AppLanguage.URDU) "بینر اور انٹرسٹیشل ایڈز دکھائیں" else "Show banner and interstitial ads",
+                            text = if (language == AppLanguage.URDU) "گوگل بینر اور انٹرسٹیشل ایڈز دکھائیں" else "Display Google banner and interstitial ads",
                             color = Color(0xFF94A3B8),
                             fontSize = 12.sp
                         )
@@ -152,45 +182,11 @@ fun AdSettingsDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Toggle Test Mode
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF1E293B), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (language == AppLanguage.URDU) "گوگل ٹیسٹ موڈ" else "Google Test Mode",
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = if (language == AppLanguage.URDU) "گوگل کی سرکاری ٹیسٹ ایڈ ائی ڈیز" else "Use Google official test unit IDs",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 12.sp
-                        )
-                    }
-                    Switch(
-                        checked = testMode,
-                        onCheckedChange = { testMode = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF10B981),
-                            checkedTrackColor = Color(0xFF065F46)
-                        )
-                    )
-                }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // AdMob App ID
                 Text(
-                    text = "AdMob App ID",
+                    text = "Google AdMob App ID (e.g. ca-app-pub-xxxxxxxx~xxxxxxxx)",
                     color = Color(0xFFE2E8F0),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -199,6 +195,7 @@ fun AdSettingsDialog(
                 OutlinedTextField(
                     value = appId,
                     onValueChange = { appId = it },
+                    placeholder = { Text("ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy", color = Color(0xFF64748B), fontSize = 11.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("admob_app_id_input"),
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -214,7 +211,7 @@ fun AdSettingsDialog(
 
                 // Banner Unit ID
                 Text(
-                    text = if (language == AppLanguage.URDU) "بینر ایڈ یونٹ ID" else "Banner Ad Unit ID",
+                    text = if (language == AppLanguage.URDU) "بینر ایڈ یونٹ ID (Banner Ad Unit ID)" else "Banner Ad Unit ID (ca-app-pub-xxxxxxxx/xxxxxxxx)",
                     color = Color(0xFFE2E8F0),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -223,6 +220,7 @@ fun AdSettingsDialog(
                 OutlinedTextField(
                     value = bannerId,
                     onValueChange = { bannerId = it },
+                    placeholder = { Text("ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy", color = Color(0xFF64748B), fontSize = 11.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("banner_ad_id_input"),
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -238,7 +236,7 @@ fun AdSettingsDialog(
 
                 // Interstitial Unit ID
                 Text(
-                    text = if (language == AppLanguage.URDU) "انٹرسٹیشل ایڈ یونٹ ID" else "Interstitial Ad Unit ID",
+                    text = if (language == AppLanguage.URDU) "انٹرسٹیشل ایڈ یونٹ ID (Interstitial Unit ID)" else "Interstitial Ad Unit ID (ca-app-pub-xxxxxxxx/xxxxxxxx)",
                     color = Color(0xFFE2E8F0),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -247,12 +245,38 @@ fun AdSettingsDialog(
                 OutlinedTextField(
                     value = interstitialId,
                     onValueChange = { interstitialId = it },
+                    placeholder = { Text("ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy", color = Color(0xFF64748B), fontSize = 11.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("interstitial_ad_id_input"),
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color(0xFF06B6D4),
+                        unfocusedBorderColor = Color(0xFF334155)
+                    ),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Rewarded Unit ID
+                Text(
+                    text = if (language == AppLanguage.URDU) "ریوارڈڈ ایڈ یونٹ ID (Rewarded Unit ID)" else "Rewarded Ad Unit ID (ca-app-pub-xxxxxxxx/xxxxxxxx)",
+                    color = Color(0xFFE2E8F0),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = rewardedId,
+                    onValueChange = { rewardedId = it },
+                    placeholder = { Text("ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy", color = Color(0xFF64748B), fontSize = 11.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("rewarded_ad_id_input"),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF10B981),
                         unfocusedBorderColor = Color(0xFF334155)
                     ),
                     textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
@@ -276,7 +300,28 @@ fun AdSettingsDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = if (language == AppLanguage.URDU) "انٹرسٹیشل ایڈ کا فوری ڈیمو چلائیں" else "Test Interstitial Ad Now")
+                    Text(text = if (language == AppLanguage.URDU) "انٹرسٹیشل ایڈ چلائیں" else "Test Interstitial Ad Now")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Test Rewarded Ad Button
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onTestRewarded()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF10B981))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircleOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = if (language == AppLanguage.URDU) "ریوارڈڈ ایڈ چلائیں" else "Test Rewarded Ad Now")
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -286,11 +331,11 @@ fun AdSettingsDialog(
                     onClick = {
                         onSave(
                             adConfig.copy(
-                                bannerAdId = bannerId,
-                                interstitialAdId = interstitialId,
-                                appId = appId,
-                                adsEnabled = adsEnabled,
-                                testMode = testMode
+                                bannerAdId = bannerId.trim(),
+                                interstitialAdId = interstitialId.trim(),
+                                rewardedAdId = rewardedId.trim(),
+                                appId = appId.trim(),
+                                adsEnabled = adsEnabled
                             )
                         )
                         onDismiss()

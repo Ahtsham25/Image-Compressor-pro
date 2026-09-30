@@ -12,14 +12,17 @@ import com.example.model.CompressionFormat
 import com.example.model.CompressionPreset
 import com.example.model.CompressionResult
 import com.example.model.ImageDetails
+import com.example.util.AdManager
 import com.example.util.FileUtils
 import com.example.util.ImageCompressorEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 sealed interface CompressionUiState {
@@ -61,6 +64,9 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
     private val _showInterstitialAd = MutableStateFlow(false)
     val showInterstitialAd: StateFlow<Boolean> = _showInterstitialAd.asStateFlow()
 
+    private val _showRewardedAd = MutableStateFlow(false)
+    val showRewardedAd: StateFlow<Boolean> = _showRewardedAd.asStateFlow()
+
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
@@ -72,6 +78,18 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
 
     val recordCount = dao.getRecordCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    init {
+        // Load persistent custom Google IDs - permanently free of test IDs
+        val app = application.applicationContext
+        _adConfig.value = AdConfig(
+            bannerAdId = AdManager.getCustomBannerId(app),
+            interstitialAdId = AdManager.getCustomInterstitialId(app),
+            rewardedAdId = AdManager.getCustomRewardedId(app),
+            appId = AdManager.getCustomAppId(app),
+            adsEnabled = AdManager.isAdsEnabled(app)
+        )
+    }
 
     fun onImageSelected(uri: Uri) {
         viewModelScope.launch {
@@ -110,17 +128,48 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun updateAdConfig(newConfig: AdConfig) {
+        val app = getApplication<Application>().applicationContext
         _adConfig.value = newConfig
+        AdManager.setAdsEnabled(app, newConfig.adsEnabled)
+        AdManager.setCustomBannerId(app, newConfig.bannerAdId)
+        AdManager.setCustomInterstitialId(app, newConfig.interstitialAdId)
+        AdManager.setCustomRewardedId(app, newConfig.rewardedAdId)
+        AdManager.setCustomAppId(app, newConfig.appId)
     }
+
+    private var pendingResetAfterInterstitial = false
 
     fun dismissInterstitialAd() {
         _showInterstitialAd.value = false
+        if (pendingResetAfterInterstitial) {
+            pendingResetAfterInterstitial = false
+            resetCompression()
+        }
     }
 
     fun triggerInterstitialAd() {
-        if (_adConfig.value.adsEnabled) {
+        if (_adConfig.value.adsEnabled && _adConfig.value.interstitialAdId.isNotBlank()) {
             _showInterstitialAd.value = true
         }
+    }
+
+    fun requestResetWithInterstitial() {
+        if (_adConfig.value.adsEnabled && _adConfig.value.interstitialAdId.isNotBlank()) {
+            pendingResetAfterInterstitial = true
+            _showInterstitialAd.value = true
+        } else {
+            resetCompression()
+        }
+    }
+
+    fun triggerRewardedAd() {
+        if (_adConfig.value.adsEnabled && _adConfig.value.rewardedAdId.isNotBlank()) {
+            _showRewardedAd.value = true
+        }
+    }
+
+    fun dismissRewardedAd() {
+        _showRewardedAd.value = false
     }
 
     fun clearToast() {
@@ -146,28 +195,22 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                     customScalePercent = _customScale.value
                 )
 
-                // Save record in Room database
                 val record = CompressionRecord(
                     fileName = details.fileName,
                     originalSizeBytes = details.sizeBytes,
                     compressedSizeBytes = result.compressedSizeBytes,
-                    reductionPercentage = result.savingsPercentage,
                     originalWidth = details.width,
                     originalHeight = details.height,
                     compressedWidth = result.compressedWidth,
                     compressedHeight = result.compressedHeight,
-                    compressionPreset = result.preset.name,
                     format = result.format.name,
+                    compressionPreset = result.preset.name,
+                    reductionPercentage = result.savingsPercentage,
                     filePath = result.compressedFile.absolutePath
                 )
                 dao.insertRecord(record)
 
                 _uiState.value = CompressionUiState.Success(result)
-
-                // Trigger interstitial ad after compression if ads enabled
-                if (_adConfig.value.adsEnabled) {
-                    _showInterstitialAd.value = true
-                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _uiState.value = CompressionUiState.Error(e.message ?: "Unknown compression error")
@@ -175,25 +218,70 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * Saves the compressed image directly to the device's public photo gallery using MediaStore,
+     * including an immediate success toast notification.
+     */
     fun saveCompressedToGallery() {
         val current = _uiState.value
         if (current !is CompressionUiState.Success) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val file = current.result.compressedFile
             val savedUri = FileUtils.saveToGallery(
                 getApplication(),
                 file,
                 current.result.format.name
             )
-            if (savedUri != null) {
-                _uiState.value = current.copy(savedToGallery = true)
-                _toastMessage.value = if (_language.value == AppLanguage.URDU)
-                    "تصویر کامیابی سے گیلری میں محفوظ ہو گئی!"
-                else
-                    "Saved to Gallery (Pictures/ImageCompressor)"
-            } else {
-                _toastMessage.value = "Failed to save image to gallery."
+            withContext(Dispatchers.Main) {
+                if (savedUri != null) {
+                    _uiState.value = current.copy(savedToGallery = true)
+                    _toastMessage.value = if (_language.value == AppLanguage.URDU)
+                        "تصویر کامیابی سے گیلری میں محفوظ ہو گئی!"
+                    else
+                        "Image saved to Gallery successfully! (Pictures/ImageCompressor)"
+                } else {
+                    _toastMessage.value = if (_language.value == AppLanguage.URDU)
+                        "تصویر گیلری میں محفوظ کرنے میں ناکامی ہوئی۔"
+                    else
+                        "Failed to save image to gallery."
+                }
+            }
+        }
+    }
+
+    /**
+     * Saves a previously compressed image from history directly to the device's public photo gallery using MediaStore,
+     * including an immediate success toast notification.
+     */
+    fun saveHistoryRecordToGallery(record: CompressionRecord) {
+        val file = File(record.filePath)
+        if (!file.exists()) {
+            _toastMessage.value = if (_language.value == AppLanguage.URDU)
+                "فائل موجود نہیں ہے۔"
+            else
+                "File no longer exists."
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val savedUri = FileUtils.saveToGallery(
+                getApplication(),
+                file,
+                record.format
+            )
+            withContext(Dispatchers.Main) {
+                if (savedUri != null) {
+                    _toastMessage.value = if (_language.value == AppLanguage.URDU)
+                        "تصویر کامیابی سے گیلری میں محفوظ ہو گئی!"
+                    else
+                        "Image saved to Gallery successfully! (Pictures/ImageCompressor)"
+                } else {
+                    _toastMessage.value = if (_language.value == AppLanguage.URDU)
+                        "تصویر گیلری میں محفوظ کرنے میں ناکامی ہوئی۔"
+                    else
+                        "Failed to save image to gallery."
+                }
             }
         }
     }

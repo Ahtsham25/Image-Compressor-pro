@@ -5,7 +5,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -16,6 +21,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -359,8 +365,8 @@ fun CompressorScreen(
                     Button(
                         onClick = onSaveToGallery,
                         modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
+                            .weight(1.1f)
+                            .height(52.dp)
                             .testTag("save_gallery_button"),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (uiState.savedToGallery) Color(0xFF10B981) else Color(0xFF06B6D4)
@@ -373,15 +379,25 @@ fun CompressorScreen(
                             tint = Color.Black
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (uiState.savedToGallery)
-                                (if (language == AppLanguage.URDU) "محفوظ شدہ!" else "Saved!")
-                            else
-                                AppStrings.saveToGallery(language),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            fontSize = 13.sp
-                        )
+                        Column {
+                            Text(
+                                text = if (uiState.savedToGallery)
+                                    (if (language == AppLanguage.URDU) "گیلری میں محفوظ شدہ!" else "Saved to Gallery!")
+                                else
+                                    (if (language == AppLanguage.URDU) "ڈاؤنلوڈ اور سیو کریں" else "Download & Save"),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                fontSize = 13.sp
+                            )
+                            if (!uiState.savedToGallery && adConfig.adsEnabled && adConfig.rewardedAdId.isNotBlank()) {
+                                Text(
+                                    text = if (language == AppLanguage.URDU) "ریوارڈ ایڈ دیکھ کر حاصل کریں" else "Watch Ad to Unlock & Save",
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.Black.copy(alpha = 0.85f),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
                     }
 
                     OutlinedButton(

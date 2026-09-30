@@ -77,6 +77,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,6 +90,7 @@ import com.example.ui.components.ContactInfoDialog
 import com.example.ui.components.DeveloperPinDialog
 import com.example.ui.components.InterstitialAdDialog
 import com.example.ui.components.PrivacyPolicyDialog
+import com.example.ui.components.RewardedAdDialog
 import com.example.ui.components.TermsDialog
 import com.example.ui.components.openWhatsApp
 import com.example.ui.screens.CompressorScreen
@@ -95,7 +98,9 @@ import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.AdManager
 import com.example.util.AppStrings
+import com.example.viewmodel.CompressionUiState
 import com.example.viewmodel.CompressorViewModel
 
 class MainActivity : ComponentActivity() {
@@ -122,6 +127,7 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
     val language by viewModel.language.collectAsStateWithLifecycle()
     val adConfig by viewModel.adConfig.collectAsStateWithLifecycle()
     val showInterstitialAd by viewModel.showInterstitialAd.collectAsStateWithLifecycle()
+    val showRewardedAd by viewModel.showRewardedAd.collectAsStateWithLifecycle()
     val historyRecords by viewModel.historyRecords.collectAsStateWithLifecycle()
     val totalBytesSaved by viewModel.totalBytesSaved.collectAsStateWithLifecycle()
     val toastMessage by viewModel.toastMessage.collectAsStateWithLifecycle()
@@ -153,6 +159,22 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
         return
     }
 
+    // Back handler: when on compressed result screen and user goes back, show interstitial ad if configured
+    BackHandler(enabled = uiState is CompressionUiState.Success) {
+        if (adConfig.adsEnabled && adConfig.interstitialAdId.isNotBlank()) {
+            val activity = context as? Activity
+            if (activity != null) {
+                AdManager.showInterstitial(activity) {
+                    viewModel.resetCompression()
+                }
+            } else {
+                viewModel.requestResetWithInterstitial()
+            }
+        } else {
+            viewModel.resetCompression()
+        }
+    }
+
     // Legal & Contact Dialogs
     if (showPrivacyDialog) {
         PrivacyPolicyDialog(onDismiss = { showPrivacyDialog = false })
@@ -180,11 +202,53 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
 
     // Interstitial Ad Overlay
     if (showInterstitialAd) {
-        InterstitialAdDialog(
-            adConfig = adConfig,
-            showDevInfo = isDeveloperMode,
-            onDismiss = { viewModel.dismissInterstitialAd() }
-        )
+        val currentActivity = context as? Activity
+        if (currentActivity != null && AdManager.isInterstitialAdReady()) {
+            LaunchedEffect(showInterstitialAd) {
+                AdManager.showInterstitial(
+                    activity = currentActivity,
+                    onAdDismissed = {
+                        viewModel.dismissInterstitialAd()
+                    }
+                )
+            }
+        } else {
+            InterstitialAdDialog(
+                adConfig = adConfig,
+                showDevInfo = isDeveloperMode,
+                onDismiss = { viewModel.dismissInterstitialAd() }
+            )
+        }
+    }
+
+    // Rewarded Ad Overlay (Watch ad to unlock and save compressed image)
+    if (showRewardedAd) {
+        val currentActivity = context as? Activity
+        if (currentActivity != null && AdManager.isRewardedAdReady()) {
+            LaunchedEffect(showRewardedAd) {
+                AdManager.showRewarded(
+                    activity = currentActivity,
+                    onUserEarnedReward = {
+                        viewModel.saveCompressedToGallery()
+                    },
+                    onAdDismissed = {
+                        viewModel.dismissRewardedAd()
+                    }
+                )
+            }
+        } else {
+            RewardedAdDialog(
+                adConfig = adConfig,
+                language = language,
+                showDevInfo = isDeveloperMode,
+                onRewardEarned = {
+                    viewModel.saveCompressedToGallery()
+                },
+                onDismiss = {
+                    viewModel.dismissRewardedAd()
+                }
+            )
+        }
     }
 
     // Ad Settings Dialog (Developer only)
@@ -192,8 +256,11 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
         AdSettingsDialog(
             adConfig = adConfig,
             language = language,
-            onSave = { updated -> viewModel.updateAdConfig(updated) },
+            onSave = { updated ->
+                viewModel.updateAdConfig(updated)
+            },
             onTestInterstitial = { viewModel.triggerInterstitialAd() },
+            onTestRewarded = { viewModel.triggerRewardedAd() },
             onDismiss = { showAdSettingsDialog = false }
         )
     }
@@ -453,9 +520,38 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
                     onCustomQualityChanged = { q -> viewModel.setCustomQuality(q) },
                     onCustomScaleChanged = { s -> viewModel.setCustomScale(s) },
                     onStartCompression = { viewModel.startCompression() },
-                    onSaveToGallery = { viewModel.saveCompressedToGallery() },
+                    onSaveToGallery = {
+                        val isAlreadySaved = (uiState as? CompressionUiState.Success)?.savedToGallery == true
+                        if (adConfig.adsEnabled && adConfig.rewardedAdId.isNotBlank() && !isAlreadySaved) {
+                            val activity = context as? Activity
+                            if (activity != null && AdManager.isRewardedAdReady()) {
+                                AdManager.showRewarded(
+                                    activity = activity,
+                                    onUserEarnedReward = { viewModel.saveCompressedToGallery() },
+                                    onAdDismissed = {}
+                                )
+                            } else {
+                                viewModel.triggerRewardedAd()
+                            }
+                        } else {
+                            viewModel.saveCompressedToGallery()
+                        }
+                    },
                     onShareImage = { viewModel.shareCompressedImage() },
-                    onReset = { viewModel.resetCompression() },
+                    onReset = {
+                        if (adConfig.adsEnabled && adConfig.interstitialAdId.isNotBlank()) {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                AdManager.showInterstitial(activity) {
+                                    viewModel.resetCompression()
+                                }
+                            } else {
+                                viewModel.requestResetWithInterstitial()
+                            }
+                        } else {
+                            viewModel.resetCompression()
+                        }
+                    },
                     isDeveloperMode = isDeveloperMode
                 )
 
@@ -464,6 +560,7 @@ fun MainAppRoot(viewModel: CompressorViewModel = viewModel()) {
                     totalBytesSaved = totalBytesSaved ?: 0L,
                     language = language,
                     onShareRecord = { record -> viewModel.shareHistoryItem(record) },
+                    onSaveRecordToGallery = { record -> viewModel.saveHistoryRecordToGallery(record) },
                     onDeleteRecord = { record -> viewModel.deleteHistoryRecord(record) },
                     onClearAll = { viewModel.clearAllHistory() }
                 )

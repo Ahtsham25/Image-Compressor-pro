@@ -59,12 +59,8 @@ fun AdBannerCard(
     var isGoogleAdLoaded by remember { mutableStateOf(false) }
     var adLoadError by remember { mutableStateOf<String?>(null) }
 
-    val effectiveAdUnitId = remember(adConfig.testMode, adConfig.bannerAdId) {
-        if (adConfig.testMode || adConfig.bannerAdId.isBlank()) {
-            "ca-app-pub-3940256099942544/6300978111" // Google Official Test Banner ID
-        } else {
-            adConfig.bannerAdId.trim()
-        }
+    val effectiveAdUnitId = remember(adConfig.bannerAdId) {
+        adConfig.bannerAdId.trim()
     }
 
     Surface(
@@ -115,7 +111,7 @@ fun AdBannerCard(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = if (adConfig.testMode) "Google AdMob (Test Mode)" else "Google AdMob",
+                        text = "Google AdMob",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFE2E8F0)
@@ -130,7 +126,7 @@ fun AdBannerCard(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (isGoogleAdLoaded) "LIVE AD LOADED" else "DEV: ${effectiveAdUnitId.take(16)}...",
+                            text = if (isGoogleAdLoaded) "LIVE AD LOADED" else if (effectiveAdUnitId.isNotBlank()) "ID: ${effectiveAdUnitId.take(16)}..." else "NO ID",
                             color = if (isGoogleAdLoaded) Color(0xFF10B981) else Color(0xFF38BDF8),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
@@ -148,35 +144,37 @@ fun AdBannerCard(
                     .heightIn(min = 50.dp),
                 contentAlignment = Alignment.Center
             ) {
-                AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
-                    factory = { ctx ->
-                        AdView(ctx).apply {
-                            setAdSize(AdSize.BANNER)
-                            this.adUnitId = effectiveAdUnitId
-                            adListener = object : AdListener() {
-                                override fun onAdLoaded() {
-                                    isGoogleAdLoaded = true
-                                    adLoadError = null
-                                }
+                if (effectiveAdUnitId.isNotBlank()) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxWidth(),
+                        factory = { ctx ->
+                            AdView(ctx).apply {
+                                setAdSize(AdSize.BANNER)
+                                this.adUnitId = effectiveAdUnitId
+                                adListener = object : AdListener() {
+                                    override fun onAdLoaded() {
+                                        isGoogleAdLoaded = true
+                                        adLoadError = null
+                                    }
 
-                                override fun onAdFailedToLoad(error: LoadAdError) {
-                                    isGoogleAdLoaded = false
-                                    adLoadError = error.message
+                                    override fun onAdFailedToLoad(error: LoadAdError) {
+                                        isGoogleAdLoaded = false
+                                        adLoadError = error.message
+                                    }
                                 }
+                                loadAd(AdRequest.Builder().build())
                             }
-                            loadAd(AdRequest.Builder().build())
+                        },
+                        update = { adView ->
+                            if (adView.adUnitId != effectiveAdUnitId) {
+                                adView.adUnitId = effectiveAdUnitId
+                                adView.loadAd(AdRequest.Builder().build())
+                            }
                         }
-                    },
-                    update = { adView ->
-                        if (adView.adUnitId != effectiveAdUnitId) {
-                            adView.adUnitId = effectiveAdUnitId
-                            adView.loadAd(AdRequest.Builder().build())
-                        }
-                    }
-                )
+                    )
+                }
 
-                // If Google AdView hasn't finished loading or failed, display fallback preview card
+                // If Google AdView hasn't finished loading or failed, display clean fallback card
                 if (!isGoogleAdLoaded) {
                     Row(
                         modifier = Modifier
@@ -188,7 +186,7 @@ fun AdBannerCard(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "🚀 Boost Phone Storage: Fast AI Compressor Pro",
+                                text = "⚡ Google AdMob Banner Slot",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color(0xFFE2E8F0),
                                     fontWeight = FontWeight.Medium
@@ -198,11 +196,11 @@ fun AdBannerCard(
                             )
 
                             Text(
-                                text = if (adConfig.testMode) "Ad Unit: $effectiveAdUnitId" else "Sponsored • Google AdMob",
+                                text = if (effectiveAdUnitId.isNotBlank()) "ID: $effectiveAdUnitId" else "Ready for your Google AdMob ID",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF94A3B8),
                                     fontSize = 10.sp,
-                                    fontFamily = if (adConfig.testMode) FontFamily.Monospace else FontFamily.Default
+                                    fontFamily = FontFamily.Monospace
                                 ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis

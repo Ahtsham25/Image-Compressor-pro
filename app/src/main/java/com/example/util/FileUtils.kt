@@ -41,38 +41,48 @@ object FileUtils {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+            put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
+            put(MediaStore.Images.Media.DATE_MODIFIED, System.currentTimeMillis() / 1000)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ImageCompressor")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }
 
-        val collectionUri = MediaStore.Images.Media.getContentUri(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.VOLUME_EXTERNAL_PRIMARY
-            } else {
-                MediaStore.VOLUME_EXTERNAL
-            }
-        )
+        val collectionUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
 
-        val imageUri = resolver.insert(collectionUri, contentValues) ?: return null
+        return try {
+            val imageUri = resolver.insert(collectionUri, contentValues) ?: return null
 
-        try {
             resolver.openOutputStream(imageUri)?.use { out ->
                 FileInputStream(file).use { inStream ->
                     inStream.copyTo(out)
                 }
+            } ?: run {
+                resolver.delete(imageUri, null, null)
+                return null
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 contentValues.clear()
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
                 resolver.update(imageUri, contentValues, null, null)
+            } else {
+                android.media.MediaScannerConnection.scanFile(
+                    context,
+                    arrayOf(file.absolutePath),
+                    arrayOf(mimeType),
+                    null
+                )
             }
-            return imageUri
+            imageUri
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
 

@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Share
@@ -65,6 +66,7 @@ fun HistoryScreen(
     totalBytesSaved: Long,
     language: AppLanguage,
     onShareRecord: (CompressionRecord) -> Unit,
+    onSaveRecordToGallery: (CompressionRecord) -> Unit = {},
     onDeleteRecord: (CompressionRecord) -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier
@@ -226,6 +228,7 @@ fun HistoryScreen(
                         record = record,
                         language = language,
                         onShare = { onShareRecord(record) },
+                        onSaveToGallery = { onSaveRecordToGallery(record) },
                         onDelete = { onDeleteRecord(record) }
                     )
                 }
@@ -239,6 +242,7 @@ private fun HistoryItemCard(
     record: CompressionRecord,
     language: AppLanguage,
     onShare: () -> Unit,
+    onSaveToGallery: () -> Unit,
     onDelete: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()) }
@@ -330,7 +334,16 @@ private fun HistoryItemCard(
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSaveToGallery, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = "Save to Gallery",
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
                 IconButton(onClick = onShare, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Share,

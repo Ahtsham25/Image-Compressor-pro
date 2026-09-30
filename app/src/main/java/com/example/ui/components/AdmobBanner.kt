@@ -5,17 +5,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -36,8 +33,9 @@ fun AdmobBanner(
     val context = LocalContext.current
     var isAdLoaded by remember { mutableStateOf(false) }
     var adLoadError by remember { mutableStateOf(false) }
-    val isTestMode = remember { AdManager.isTestModeEnabled(context) }
     val adUnitId = remember { AdManager.getEffectiveBannerId(context) }
+
+    if (adUnitId.isBlank()) return
 
     Box(
         modifier = modifier
@@ -69,10 +67,9 @@ fun AdmobBanner(
             }
         )
 
-        // Subtle indicator if in test mode and awaiting ad response
         if (!isAdLoaded && !adLoadError) {
             Text(
-                text = if (isTestMode) "AdMob Test Banner Loading..." else "Sponsored",
+                text = "Sponsored",
                 fontSize = 11.sp,
                 color = Color.Gray,
                 modifier = Modifier.padding(8.dp)

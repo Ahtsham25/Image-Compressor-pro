@@ -275,7 +275,7 @@ fun SettingsScreen(
                                     )
                                 )
                                 Text(
-                                    text = if (adConfig.adsEnabled) "Active (${if (adConfig.testMode) "Test Mode" else "Live"})" else "Disabled",
+                                    text = if (adConfig.adsEnabled) "Active (Live Google AdMob)" else "Disabled",
                                     color = if (adConfig.adsEnabled) Color(0xFF10B981) else Color(0xFFEF4444),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold

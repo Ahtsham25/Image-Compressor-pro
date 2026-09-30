@@ -34,12 +34,11 @@ data class CompressionResult(
 }
 
 data class AdConfig(
-    val bannerAdId: String = "ca-app-pub-3940256099942544/6300978111",
-    val interstitialAdId: String = "ca-app-pub-3940256099942544/1033173712",
-    val rewardedAdId: String = "ca-app-pub-3940256099942544/5224354917",
-    val appId: String = "ca-app-pub-3940256099942544~3347511713",
-    val adsEnabled: Boolean = true,
-    val testMode: Boolean = true
+    val bannerAdId: String = "",
+    val interstitialAdId: String = "",
+    val rewardedAdId: String = "",
+    val appId: String = "",
+    val adsEnabled: Boolean = true
 )
 
 enum class AppLanguage {
